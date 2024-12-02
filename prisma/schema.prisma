@@ -15,6 +15,7 @@ datasource db {
 
 model User {
   id                 String     @id @default(uuid())
+  name               String
   email              String     @unique
   password           String
   role               UserRole
@@ -23,14 +24,55 @@ model User {
   status             UserStatus @default(ACTIVE)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
+
   @@map("users")
 }
 
+model Shop {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  logo        String
+
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("shops")
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  image        String[]
+  shopId       String
+  shopInfo     Shop     @relation(fields: [shopId], references: [id])
+  stock        Int      @default(0)
+  isDeleted    Boolean  @default(false)
+  price        Float
+  description  String
+  categoryId   String
+  categoryInfo Category @relation(fields: [categoryId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("products")
+}
+
 enum UserRole {
-  SUPER_ADMIN
   ADMIN
-  DOCTOR
-  PATIENT
+  VENDOR
+  CUSTOMER
 }
 
 enum UserStatus {
