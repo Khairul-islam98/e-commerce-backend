@@ -1,7 +1,9 @@
-import { Category } from "@prisma/client";
+import { Category, Prisma } from "@prisma/client";
 import prisma from "../../utils/prisma";
 import AppError from "../../error/AppError";
 import httpStatus from "http-status";
+
+const categorySearchableFields = ["name"];
 
 const createCategoryIntoDB = async (payload: Category) => {
   const isExist = await prisma.category.findFirst({
@@ -16,9 +18,45 @@ const createCategoryIntoDB = async (payload: Category) => {
     data: payload,
   });
 };
-const getAllCategories = async () => {
-  return await prisma.category.findMany();
+const getAllCategories = async (params: any) => {
+  const { searchTerm } = params;
+  const andCondition: Prisma.CategoryWhereInput[] = [];
+
+  // Handle single or multiple 'name' parameters
+  if (searchTerm) {
+    if (Array.isArray(searchTerm)) {
+      andCondition.push({
+        OR: searchTerm
+          .map((value) =>
+            categorySearchableFields.map((field) => ({
+              [field]: {
+                contains: value,
+                mode: "insensitive",
+              },
+            }))
+          )
+          .flat(),
+      });
+    } else {
+      andCondition.push({
+        OR: categorySearchableFields.map((field) => ({
+          [field]: {
+            contains: searchTerm,
+            mode: "insensitive",
+          },
+        })),
+      });
+    }
+  }
+
+  const whereCondition: Prisma.CategoryWhereInput =
+    andCondition.length > 0 ? { AND: andCondition } : {};
+
+  return await prisma.category.findMany({
+    where: whereCondition,
+  });
 };
+
 const getCategoryById = async (id: string) => {
   return await prisma.category.findUnique({
     where: {

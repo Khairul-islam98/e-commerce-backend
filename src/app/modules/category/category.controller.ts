@@ -13,7 +13,8 @@ const createCategory = catchAsync(async (req, res) => {
   });
 });
 const getAllCategories = catchAsync(async (req, res) => {
-  const result = await CategoryService.getAllCategories();
+  console.log(req.query);
+  const result = await CategoryService.getAllCategories(req.query);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
