@@ -36,13 +36,13 @@ export const sendEmail = async (to: string, resetLink: string) => {
         </p>
       </div>
       <div style="margin-top: 30px; text-align: center; color: #777;">
-        <p style="font-size: 14px;">&copy; ${new Date().getFullYear()} tech-tips-hub. All rights reserved.</p>
+        <p style="font-size: 14px;">&copy; ${new Date().getFullYear()} shopHub. All rights reserved.</p>
       </div>
     </div>
   `;
 
   const mailData = {
-    from: `"Tech-tips-hub" <${config.email_user}>`, // sender address
+    from: `"ShopHub" <${config.email_user}>`, // sender address
     to, // list of receivers
     subject: "Reset your password within ten mins", // Subject line
     text: "", // plain text body
