@@ -7,7 +7,6 @@ import { AuthServices } from "./auth.service";
 import config from "../../config";
 
 const createAccount = catchAsync(async (req, res) => {
-  console.log(req.file);
   const result = await AuthServices.createAccountIntoDB({
     ...JSON.parse(req.body.data),
     profilePhoto: req.file?.path,
@@ -87,17 +86,17 @@ const changePassword = catchAsync(
   }
 );
 
-const forgotPassword = catchAsync(async (req, res) => {
-  await AuthServices.forgotPassword(req.body);
+const forgetPassword = catchAsync(async (req, res) => {
+  const result = await AuthServices.forgetPassword(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Password reset link sent successfully!",
+    data: result,
   });
 });
 const resetPassword = catchAsync(async (req, res) => {
-  const token = req.headers.authorization || "";
-  await AuthServices.resetPassword(token, req.body);
+  await AuthServices.resetPassword(req.body);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -110,6 +109,6 @@ export const AuthController = {
   loginUser,
   refreshToken,
   changePassword,
-  forgotPassword,
+  forgetPassword,
   resetPassword,
 };
