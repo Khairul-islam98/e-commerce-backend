@@ -9,7 +9,8 @@ const router = express.Router();
 router.post(
   "/create",
   auth(UserRole.VENDOR, UserRole.ADMIN),
-  fileUpload.single("image"),
+  // fileUpload.single("image"),
+  fileUpload.array("image", 10),
   ProductController.createProduct
 );
 router.post(

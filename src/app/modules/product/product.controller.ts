@@ -3,11 +3,14 @@ import sendResponse from "../../utils/sendResponse";
 import { ProductServices } from "./product.service";
 import httpStatus from "http-status";
 import { Request } from "express";
+import pick from "../../utils/pick";
 
 const createProduct = catchAsync(async (req, res) => {
+  const images = (req.files as Express.Multer.File[])?.map((file) => file.path);
+  console.log(images);
   const result = await ProductServices.createProductIntoDB({
     ...JSON.parse(req.body.data),
-    image: req.file?.path,
+    image: images,
   });
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -74,14 +77,8 @@ const deleteProduct = catchAsync(async (req: Request & { user?: any }, res) => {
 });
 
 const getAllProducts = catchAsync(async (req, res) => {
-  const options = {
-    limit: Number(req.query.limit) || 10,
-    page: Number(req.query.page) || 1,
-    sortBy: req.query.sortBy as string,
-    sortOrder: req.query.sortOrder as string,
-  };
-
-  const result = await ProductServices.getAllProductsFromDB(req.query, options);
+  const option = pick(req.query, ["limit", "page", "sortBy", "sortOrder"]);
+  const result = await ProductServices.getAllProductsFromDB(req.query, option);
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -103,6 +100,7 @@ const getProductById = catchAsync(async (req, res) => {
 });
 
 const getProductsByCategory = catchAsync(async (req, res) => {
+  console.log(req.params);
   const { categoryId } = req.params;
   const result = await ProductServices.getProductByCategoryId(categoryId);
   sendResponse(res, {
