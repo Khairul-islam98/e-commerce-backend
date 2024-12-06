@@ -5,6 +5,7 @@ import httpStatus from "http-status";
 import { Request } from "express";
 
 const getUser = catchAsync(async (req: Request & { user?: any }, res) => {
+  console.log(req.user.id);
   const result = await UserService.getUserFromDB(req.user.id);
   sendResponse(res, {
     statusCode: httpStatus.OK,
