@@ -15,6 +15,11 @@ const createProductIntoDB = async (
     data: {
       ...payload,
       image: Array.isArray(payload.image) ? payload.image : [payload.image],
+      // image: {
+      //   set: Array.isArray(payload.image)
+      //     ? payload.image.filter((img) => img) // Filter out undefined
+      //     : [payload.image].filter((img) => img !== undefined), // Handle single value
+      // },
       sizes: {
         create: payload.sizes?.map((size) => ({
           name: size.name,
@@ -174,12 +179,16 @@ const getAllProductsFromDB = async (
     searchTerm?: string;
     minPrice?: string | number;
     maxPrice?: string | number;
+    category?: string; // Category name
     [key: string]: any;
   },
   options: any
 ) => {
   const { limit, page, skip } = paginationHelper.calculatePagination(options);
-  const { searchTerm, minPrice, maxPrice, ...filterData } = params;
+  const { searchTerm, minPrice, maxPrice, category, ...filterData } = params;
+
+  const nonFilterableFields = ["limit", "page", "sortBy", "sortOrder"];
+  nonFilterableFields.forEach((field) => delete filterData[field]);
 
   const andCondition: Prisma.ProductWhereInput[] = [];
 
@@ -195,24 +204,57 @@ const getAllProductsFromDB = async (
     });
   }
 
-  // Price filtering conditions
+  // Price filtering
   const priceCondition: Prisma.ProductWhereInput = {};
-
   if (minPrice && maxPrice) {
-    priceCondition.price = {
-      gte: Number(minPrice),
-      lte: Number(maxPrice),
-    };
+    priceCondition.price = { gte: Number(minPrice), lte: Number(maxPrice) };
   } else if (minPrice) {
     priceCondition.price = { gte: Number(minPrice) };
   } else if (maxPrice) {
     priceCondition.price = { lte: Number(maxPrice) };
   }
-
   if (Object.keys(priceCondition).length > 0) {
     andCondition.push(priceCondition);
   }
 
+  // Category filter by name
+  // if (category) {
+  //   andCondition.push({
+  //     categoryInfo: {
+  //       name: {
+  //         contains: String(category),
+  //         mode: "insensitive",
+  //       },
+  //     },
+  //   });
+  // }
+  if (category) {
+    if (Array.isArray(category)) {
+      // Handle multiple categories
+      andCondition.push({
+        OR: category.map((cat) => ({
+          categoryInfo: {
+            name: {
+              contains: String(cat),
+              mode: "insensitive",
+            },
+          },
+        })),
+      });
+    } else {
+      // Handle a single category
+      andCondition.push({
+        categoryInfo: {
+          name: {
+            contains: String(category),
+            mode: "insensitive",
+          },
+        },
+      });
+    }
+  }
+
+  // Additional filters
   if (Object.keys(filterData).length > 0) {
     andCondition.push({
       AND: Object.entries(filterData).map(([field, value]) => ({
@@ -221,6 +263,7 @@ const getAllProductsFromDB = async (
     });
   }
 
+  // Where condition
   const whereCondition: Prisma.ProductWhereInput = {
     isDeleted: false,
     ...(andCondition.length > 0 ? { AND: andCondition } : {}),
@@ -243,12 +286,14 @@ const getAllProductsFromDB = async (
   });
 
   const total = await prisma.product.count({ where: whereCondition });
+  const totalPage = Math.ceil(total / limit);
 
   return {
     meta: {
       page,
       limit,
       total,
+      totalPage,
     },
     data: result,
   };
@@ -272,20 +317,25 @@ const getProductById = async (id: string) => {
 
 const getProductByCategoryId = async (categoryId: string) => {
   const productLimit = 5;
+
+  // Fetch products from the specified category
   const categoryProducts = await prisma.product.findMany({
     where: { categoryId, isDeleted: false },
     include: {
       colors: true,
       sizes: true,
       shopInfo: true,
+      categoryInfo: true,
     },
     take: productLimit,
   });
 
+  // If we need more products to meet the limit
   if (categoryProducts.length < productLimit) {
     const additionalProducts = await prisma.product.findMany({
       where: {
         isDeleted: false,
+        categoryId: { not: categoryId }, // Ensure different categories
         NOT: { id: { in: categoryProducts.map((p) => p.id) } },
       },
       include: {
@@ -296,9 +346,14 @@ const getProductByCategoryId = async (categoryId: string) => {
       take: productLimit - categoryProducts.length,
     });
 
+    // Combine category-specific products with additional products
     return [...categoryProducts, ...additionalProducts];
   }
+
+  // Return category-specific products if they meet the limit
+  return categoryProducts;
 };
+
 const getShopFollwer = async (userId: string, limit: number) => {
   const followed = await prisma.shopFollower.findMany({
     where: {

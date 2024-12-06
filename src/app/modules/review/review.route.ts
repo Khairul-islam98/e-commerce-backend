@@ -12,7 +12,7 @@ router.post(
   fileUpload.array("image", 10),
   ReviewController.createReview
 );
-router.get("/getReviewsProduct", ReviewController.getReviewsProduct);
+router.get("/:productId", ReviewController.getReviewsProduct);
 router.post(
   "/createReplay",
   auth(UserRole.CUSTOMER, UserRole.ADMIN, UserRole.VENDOR),
