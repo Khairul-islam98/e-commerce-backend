@@ -39,10 +39,13 @@ const moduleRoutes = [
     path: "/review",
     route: ReviewRoutes,
   },
+<<<<<<< HEAD
   {
     path: "/payment",
     route: PaymentRoutes,
   },
+=======
+>>>>>>> e76c5e9c4d0760c45854c3725542816bfbd17622
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
