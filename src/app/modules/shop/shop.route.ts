@@ -19,9 +19,18 @@ router.patch(
   fileUpload.single("image"),
   ShopController.updateShop
 );
-router.post("/follow", auth(UserRole.CUSTOMER), ShopController.followShop);
+router.patch(
+  "/follow/:shopId",
+  auth(UserRole.CUSTOMER),
+  ShopController.followShop
+);
 router.post("/unfollow", auth(UserRole.CUSTOMER), ShopController.unfollowShop);
 router.post("/following", ShopController.userFollowedShop);
 router.get("/followed-count", ShopController.shopFollowedCount);
+router.get(
+  "/:shopId",
+  auth(UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN),
+  ShopController.getShopById
+);
 
 export const ShopRoutes = router;

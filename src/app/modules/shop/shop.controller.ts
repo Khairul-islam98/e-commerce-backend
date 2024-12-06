@@ -98,6 +98,16 @@ const shopFollowedCount = catchAsync(
   }
 );
 
+const getShopById = catchAsync(async (req: Request & { user?: any }, res) => {
+  const result = await ShopServices.getShopById(req.params.shopId, req.user.id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Shop retrived successfully",
+    data: result,
+  });
+});
+
 export const ShopController = {
   createShop,
   getShopUser,
@@ -106,4 +116,5 @@ export const ShopController = {
   unfollowShop,
   userFollowedShop,
   shopFollowedCount,
+  getShopById,
 };
