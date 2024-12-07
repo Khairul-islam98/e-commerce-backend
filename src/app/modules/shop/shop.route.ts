@@ -12,7 +12,11 @@ router.post(
   fileUpload.single("image"),
   ShopController.createShop
 );
-router.get("/my-shop", ShopController.getShopUser);
+router.get(
+  "/my-shop",
+  auth(UserRole.VENDOR, UserRole.ADMIN),
+  ShopController.getShopUser
+);
 router.patch(
   "/update",
   auth(UserRole.VENDOR, UserRole.ADMIN),
@@ -32,5 +36,7 @@ router.get(
   auth(UserRole.CUSTOMER, UserRole.VENDOR, UserRole.ADMIN),
   ShopController.getShopById
 );
+
+router.get("/", auth(UserRole.CUSTOMER), ShopController.getPrioritizedProducts);
 
 export const ShopRoutes = router;

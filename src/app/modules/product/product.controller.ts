@@ -6,6 +6,8 @@ import { Request } from "express";
 import pick from "../../utils/pick";
 
 const createProduct = catchAsync(async (req, res) => {
+  console.log(req.files);
+  console.log(req.body);
   const images = (req.files as Express.Multer.File[])?.map((file) => file.path);
   console.log(images);
   const result = await ProductServices.createProductIntoDB({
@@ -36,7 +38,7 @@ const duplicateProduct = catchAsync(
     }
 
     const result = await ProductServices.duplicateProduct(
-      existingProduct,
+      existingProduct.id,
       user.id
     );
 

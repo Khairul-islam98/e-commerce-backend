@@ -6,6 +6,7 @@ import { Request } from "express";
 
 const createReview = catchAsync(async (req: Request & { user?: any }, res) => {
   const parsedData = JSON.parse(req.body.data);
+  console.log({ parsedData });
   const images = (req.files as Express.Multer.File[])?.map((file) => file.path);
   const result = await ReviewService.createReviewIntoDB(
     {

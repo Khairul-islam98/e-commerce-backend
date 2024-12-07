@@ -7,6 +7,9 @@ import { ReviewRoutes } from "../modules/review/review.route";
 import { CategoryRoutes } from "../modules/category/category.route";
 import { UserRoutes } from "../modules/user/user.route";
 import { PaymentRoutes } from "../modules/payment/payment.route";
+import { CouponRoutes } from "../modules/coupon/coupon.route";
+import { FlashSaleRoutes } from "../modules/flashsale/flashsale.route";
+import { RecentRoutes } from "../modules/recent-product/recent.route";
 
 const router = express.Router();
 
@@ -39,13 +42,22 @@ const moduleRoutes = [
     path: "/review",
     route: ReviewRoutes,
   },
-<<<<<<< HEAD
   {
     path: "/payment",
     route: PaymentRoutes,
   },
-=======
->>>>>>> e76c5e9c4d0760c45854c3725542816bfbd17622
+  {
+    path: "/coupon",
+    route: CouponRoutes,
+  },
+  {
+    path: "/flash-sale",
+    route: FlashSaleRoutes,
+  },
+  {
+    path: "/recent",
+    route: RecentRoutes,
+  },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

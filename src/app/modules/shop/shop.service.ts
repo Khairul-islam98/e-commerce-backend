@@ -29,6 +29,14 @@ const getShopUserFromDB = async (userId: string) => {
     where: {
       owner: userId,
     },
+    include: {
+      products: {
+        where: {
+          isDeleted: false,
+        },
+      },
+      followers: true,
+    },
   });
 
   return result;
@@ -185,6 +193,69 @@ const getShopById = async (shopId: string, userId: string) => {
   };
 };
 
+const getPrioritizedProductsFromFollowedShops = async (
+  userId: string,
+  options: any,
+  limit: number
+) => {
+  // Fetch followed shops
+  const followed = await prisma.shopFollower.findMany({
+    where: {
+      userId: userId,
+    },
+    select: {
+      shopId: true,
+    },
+  });
+
+  console.log("Followed shops:", followed); // Debugging
+
+  const shopIds = followed.map((shopFollower) => shopFollower.shopId);
+
+  // Check if there are followed shops
+  if (shopIds.length === 0) {
+    console.log("No followed shops found for user:", userId);
+    return {
+      data: [],
+      meta: { page: options.page, limit, total: 0, totalPage: 0 },
+    };
+  }
+
+  // Fetch products from followed shops
+  const products = await prisma.product.findMany({
+    where: {
+      shopId: { in: shopIds },
+      isDeleted: false,
+    },
+    skip: 0,
+    take: limit,
+    include: {
+      shopInfo: true,
+      categoryInfo: true,
+    },
+  });
+
+  console.log("Products from followed shops:", products); // Debugging
+
+  if (products.length === 0) {
+    return {
+      data: [],
+      meta: { page: options.page, limit, total: 0, totalPage: 0 },
+    };
+  }
+
+  // Return products
+  return {
+    data: products,
+    meta: {
+      page: options.page,
+      limit,
+      total: products.length, // Adjust total count
+      totalPage: Math.ceil(products.length / limit),
+    },
+  };
+};
+
 export const ShopServices = {
   createShopIntoDB,
   getShopUserFromDB,
@@ -194,4 +265,5 @@ export const ShopServices = {
   userFollowedShopFromDB,
   shopFollowedCountFromDB,
   getShopById,
+  getPrioritizedProductsFromFollowedShops,
 };

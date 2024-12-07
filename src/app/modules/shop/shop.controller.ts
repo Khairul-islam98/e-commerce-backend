@@ -3,6 +3,7 @@ import sendResponse from "../../utils/sendResponse";
 import catchAsync from "../../utils/catchAsync";
 import { ShopServices } from "./shop.service";
 import { Request } from "express";
+import pick from "../../utils/pick";
 
 const createShop = catchAsync(async (req: Request & { user?: any }, res) => {
   const parsedData = JSON.parse(req.body.data);
@@ -108,6 +109,36 @@ const getShopById = catchAsync(async (req: Request & { user?: any }, res) => {
   });
 });
 
+const getPrioritizedProducts = catchAsync(
+  async (req: Request & { user?: any }, res) => {
+    console.log(req.query);
+    const user = req.user;
+    const options = pick(req.query, ["limit", "page", "sortBy", "sortOrder"]);
+    const productLimit = Number(req.query.productLimit) || 10;
+
+    console.log("Fetching prioritized products for user:", user.id);
+    console.log("Options:", options);
+    console.log("Product Limit:", productLimit);
+
+    const result = await ShopServices.getPrioritizedProductsFromFollowedShops(
+      user.id,
+      options,
+      productLimit
+    );
+
+    if (result && result.data && result.data.length === 0) {
+      console.log("No products found for the followed shops.");
+    }
+
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Prioritized products retrieved successfully",
+      data: result,
+    });
+  }
+);
+
 export const ShopController = {
   createShop,
   getShopUser,
@@ -117,4 +148,5 @@ export const ShopController = {
   userFollowedShop,
   shopFollowedCount,
   getShopById,
+  getPrioritizedProducts,
 };

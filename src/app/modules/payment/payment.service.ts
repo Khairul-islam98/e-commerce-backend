@@ -8,28 +8,38 @@ export const paymentService = {
   async initializePayment(
     userId: string,
     email: string,
-    amount: number
+    amount: number,
+    shopId: string,
+    orderId: string
   ): Promise<string> {
     const transactionId = `TXN-${Date.now()}`;
+
+    // Log the amount being passed
+    console.log("Initializing payment with amount:", amount);
 
     const payload = {
       store_id: config.store_id,
       signature_key: config.signature_key,
       cus_email: email,
       cus_phone: "0123456789",
-      amount: amount,
+      amount: amount, // Send BDT amount
       cus_name: "John Doe",
       tran_id: transactionId,
-      currency: "USD",
-      success_url: `https://tech-tips-hub-backend.vercel.app/api/payment/confirmation?transactionId=${transactionId}&status=success`,
-      fail_url: `https://tech-tips-hub-backend.vercel.app/api/payment/confirmation?transactionId=${transactionId}&status=failed`,
-      cancel_url: `https://tech-tips-hub-backend.vercel.app/api/payment/confirmation?transactionId=${transactionId}&status=cancelled`,
-      desc: userId,
+      currency: "BDT", // Set currency to BDT
+      success_url: `https://e-commerce-backend-iota-pied.vercel.app/api/payment/confirmation?transactionId=${transactionId}&status=success`,
+      fail_url: "http://www.merchantdomain.com/failedpage.html",
+      cancel_url: "http://www.merchantdomain.com/cancelpage.html",
+      desc: orderId,
       type: "json",
     };
+    // Log the payload being sent
+    console.log("Payload sent to payment gateway:", payload);
 
     try {
       const response = await axios.post(config.payment_url as string, payload);
+
+      // Log the response from the payment gateway
+      console.log("Response from Payment Gateway:", response.data);
 
       if (response.data.result === "true") {
         const { payment_url } = response.data;
@@ -37,10 +47,12 @@ export const paymentService = {
         // Create a payment entry in the database
         await prisma.payment.create({
           data: {
-            userId: userId,
-            amount: amount,
+            userId,
+            amount,
             status: "PENDING",
             transactionId: transactionId,
+            shopId,
+            orderId,
           },
         });
 
@@ -66,6 +78,7 @@ const verifyPayment = async (transactionId: string) => {
       },
     });
 
+    console.log("Payment verification response:", response.data);
     return response.data;
   } catch (err) {
     console.error("Payment validation failed:", err);
@@ -74,57 +87,42 @@ const verifyPayment = async (transactionId: string) => {
 };
 
 const confirmationService = async (transactionId: string, status: string) => {
-  try {
-    // Step 1: Verify the payment
-    const verifyResponse = await verifyPayment(transactionId);
+  const verifyResponse = await verifyPayment(transactionId);
 
-    if (!verifyResponse || verifyResponse.pay_status !== "Successful") {
-      throw new Error(
-        "Payment verification failed or payment was not successful."
-      );
-    }
+  console.log("Verify Response:", verifyResponse);
 
-    // Step 2: Update payment status in the database
-    const paymentRecord = await prisma.payment.updateMany({
-      where: { transactionId },
+  let message = "";
+  let amountInBdt = verifyResponse.converted_amount || 0; // Adjust if the response has a field for the converted amount
+
+  if (verifyResponse && verifyResponse.pay_status === "Successful") {
+    const paymentUpdateResult = await prisma.payment.update({
+      where: { transactionId: transactionId },
       data: { status: "SUCCESS" },
     });
 
-    if (!paymentRecord) {
-      throw new Error("Payment record update failed.");
-    }
-
-    // Step 3: Update product stock
-    const productId = verifyResponse.product_id;
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    await prisma.order.update({
+      where: { id: paymentUpdateResult.orderId! },
+      data: { status: "PROCESSING" },
     });
 
-    if (!product || product.stock <= 0) {
-      throw new Error("Product is out of stock or unavailable.");
+    if (!paymentUpdateResult) {
+      throw new Error("Failed to update payment status");
     }
 
-    await prisma.product.update({
-      where: { id: productId },
-      data: { stock: product.stock - 1 },
-    });
-
-    // Step 4: Log successful payment and prepare confirmation message
-    const message = `Your payment with Transaction ID: ${transactionId} was successful!`;
-
-    const filePath = join(__dirname, "../../../../public/confirmation.html");
-    let template = readFileSync(filePath, "utf-8");
-
-    template = template.replace("{{message}}", message);
-
-    return template;
-  } catch (error) {
-    console.error("Confirmation service error:", error);
-    throw new Error("Confirmation service failed.");
+    message = `Successfully Paid! Amount in BDT: ${amountInBdt}`;
+  } else {
+    message = "Payment Failed!";
   }
+
+  const filePath = join(__dirname, "../../../../public/confirmation.html");
+  let template = readFileSync(filePath, "utf-8");
+
+  template = template.replace("{{message}}", message);
+  template = template.replace("{{amountInBdt}}", amountInBdt.toString());
+
+  return template;
 };
 
 export const paymentServices = {
-  initializePayment: paymentService.initializePayment,
   confirmationService,
 };

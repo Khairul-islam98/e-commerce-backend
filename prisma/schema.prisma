@@ -18,27 +18,48 @@ model User {
   name               String
   email              String     @unique
   password           String
-  role               UserRole
+  role               UserRole   @default(CUSTOMER)
   profilePhoto       String?
   needPasswordChange Boolean    @default(true)
   status             UserStatus @default(ACTIVE)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
+  followedShops ShopFollower[]
+  order         Order[]
+  recentProduct RecentProduct[]
+  review        Review[]
+  payment       Payment[]
+  shop          Shop[]
+
   @@map("users")
 }
 
 model Shop {
-  id          String  @id @default(uuid())
+  id          String         @id @default(uuid())
   name        String
   description String?
   logo        String
-
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  owner       String         @unique
+  userId      User           @relation(fields: [owner], references: [id])
+  products    Product[]
+  followers   ShopFollower[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  order       Order[]
+  payment     Payment[]
 
   @@map("shops")
+}
+
+model ShopFollower {
+  id       String @id @default(uuid())
+  shopId   String
+  shopInfo Shop   @relation(fields: [shopId], references: [id])
+  userId   String
+  userInfo User   @relation(fields: [userId], references: [id])
+
+  @@unique([shopId, userId])
 }
 
 model Category {
@@ -52,21 +73,137 @@ model Category {
 }
 
 model Product {
-  id           String   @id @default(uuid())
-  name         String
-  image        String[]
-  shopId       String
-  shopInfo     Shop     @relation(fields: [shopId], references: [id])
-  stock        Int      @default(0)
-  isDeleted    Boolean  @default(false)
-  price        Float
-  description  String
-  categoryId   String
-  categoryInfo Category @relation(fields: [categoryId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String          @id @default(uuid())
+  name          String
+  image         String[]
+  rating        Float           @default(0)
+  shopId        String
+  shopInfo      Shop            @relation(fields: [shopId], references: [id])
+  stock         Int             @default(0)
+  isDeleted     Boolean         @default(false)
+  price         Float
+  discount      Float           @default(0)
+  description   String
+  categoryId    String
+  categoryInfo  Category        @relation(fields: [categoryId], references: [id])
+  sizes         Size[]
+  colors        Color[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  recentProduct RecentProduct[]
+  review        Review[]
+  order         Order[]
+  coupon        Coupon[]
 
   @@map("products")
+}
+
+model Size {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sizes")
+}
+
+model Color {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("colors")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  userinfo    User        @relation(fields: [userId], references: [id])
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id])
+  shopId      String
+  shop        Shop        @relation(fields: [shopId], references: [id])
+  totalAmount Float
+  quantity    Int
+  size        String?
+  color       String?
+  couponCode  String?
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+
+  payment Payment[]
+  review  Review[]
+
+  @@map("orders")
+}
+
+model Coupon {
+  id String @id @default(uuid())
+
+  code String @unique
+
+  discountType String
+
+  discountValue Float
+
+  isActive Boolean @default(true)
+
+  minimumSpend Float?
+
+  productId String
+  product   Product? @relation(fields: [productId], references: [id])
+}
+
+model RecentProduct {
+  id        String   @id @default(uuid())
+  userId    String
+  userinfo  User     @relation(fields: [userId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  viewedAt  DateTime @default(now())
+
+  @@map("recent_products")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  content   String
+  image     String[] @default([])
+  rating    Int      @default(0)
+  userId    String
+  userinfo  User     @relation(fields: [userId], references: [id])
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        String
+  userinfo      User          @relation(fields: [userId], references: [id])
+  orderId       String?
+  order         Order?        @relation(fields: [orderId], references: [id])
+  amount        Int
+  status        PaymentStatus
+  transactionId String @unique
+  shopId        String?
+  shop          Shop?         @relation(fields: [shopId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("payments")
 }
 
 enum UserRole {
@@ -79,4 +216,17 @@ enum UserStatus {
   ACTIVE
   BLOCKED
   DELETED
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }

@@ -37,46 +37,53 @@ const createProductIntoDB = async (
 
   return result;
 };
-const duplicateProduct = async (payload: Product, userId: string) => {
-  const isProductExist = await prisma.product.findUnique({
-    where: {
-      id: payload.id,
-    },
+
+const duplicateProduct = async (productId: string, userId: string) => {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
     include: {
       colors: true,
-      shopInfo: true,
       sizes: true,
+      shopInfo: true,
     },
   });
-  if (!isProductExist) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Product not found");
+
+  if (!product) {
+    throw new AppError(404, "Product not found");
   }
-  if (isProductExist.shopInfo.owner !== userId) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "You are not the owner of this product"
-    );
+
+  if (product.shopInfo.owner !== userId) {
+    throw new AppError(403, "You are not authorized to duplicate this product");
   }
-  const result = await prisma.product.create({
+
+  const newProduct = await prisma.product.create({
     data: {
-      ...payload,
-      shopId: isProductExist.shopId,
+      name: product.name,
+      price: product.price,
+      discount: product.discount,
+
+      description: product.description,
+      image: product.image,
+      categoryId: product.categoryId,
+      shopId: product.shopId,
       sizes: {
-        create: isProductExist.sizes.map((size) => ({
+        create: product.sizes.map((size) => ({
           name: size.name,
           value: size.value,
         })),
       },
       colors: {
-        create: isProductExist.colors.map((color) => ({
+        create: product.colors.map((color) => ({
           name: color.name,
           value: color.value,
         })),
       },
     },
   });
-  return result;
+
+  return newProduct;
 };
+
 const updateProductFromDB = async (
   payload: Product & {
     colors: Array<{
@@ -318,7 +325,6 @@ const getProductById = async (id: string) => {
 const getProductByCategoryId = async (categoryId: string) => {
   const productLimit = 5;
 
-  // Fetch products from the specified category
   const categoryProducts = await prisma.product.findMany({
     where: { categoryId, isDeleted: false },
     include: {
@@ -330,12 +336,11 @@ const getProductByCategoryId = async (categoryId: string) => {
     take: productLimit,
   });
 
-  // If we need more products to meet the limit
   if (categoryProducts.length < productLimit) {
     const additionalProducts = await prisma.product.findMany({
       where: {
         isDeleted: false,
-        categoryId: { not: categoryId }, // Ensure different categories
+        categoryId: { not: categoryId },
         NOT: { id: { in: categoryProducts.map((p) => p.id) } },
       },
       include: {
@@ -346,11 +351,9 @@ const getProductByCategoryId = async (categoryId: string) => {
       take: productLimit - categoryProducts.length,
     });
 
-    // Combine category-specific products with additional products
     return [...categoryProducts, ...additionalProducts];
   }
 
-  // Return category-specific products if they meet the limit
   return categoryProducts;
 };
 
